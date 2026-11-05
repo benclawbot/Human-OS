@@ -1,74 +1,62 @@
 # Human OS
 
-A deliberately minimal, mobile-first personal recursive self-improvement PWA, inspired by the approved dark, atmospheric Oura design direction. The app helps a single person observe, learn, and improve through a North Star, a daily reflection, one active experiment, an AI coach and a weekly review.
+A quiet, mobile-first personal recursive-improvement PWA. **No AI service, no account, no backend, no telemetry.** Designed with the approved dark, mountain-at-dawn wellness visual direction.
 
-## What's included
+## Main experience
 
-- Four-step onboarding: North Star, baseline, bottleneck and first intervention.
-- Today: focus, active 7–21-day experiment, reflection and energy check-in.
-- Coach: live OpenAI Responses API integration, contextual advice, structured recommendations and user-approved experiment changes. No scripted or invented AI content in production.
-- Journey: actual recorded observations, check-in history, average reported energy and weekly reviews, without fictional improvement percentages.
-- Privacy: signed HttpOnly cookies, Origin checks, private storage, export and delete data, restrictive browser security headers, server-side secrets and state conflict protection.
-- PWA: standalone installation metadata, maskable icons and an offline app shell. Data sync and AI require internet.
+- **Today** — one North Star, one active experiment, one meaningful focus, a 2-minute daily check-in.
+- **Experiment** — one active 7–28 day experiment with a hypothesis, action, primary measure, and decision rule. Start a new 14-day template, archive the previous experiment, or customize the active one.
+- **Journey** — real check-in counts and energy averages (no invented scores), past notes and history, and a structured weekly review with an explicit improvement-of-the-improvement-process question.
+- **Onboarding** — North Star → baseline → bottleneck → first intervention (four short answers).
+- **Privacy and backup** — IndexedDB on the current device with JSON export/import, including best-effort import of prior Human OS exports (old AI messages and suggestions are discarded).
+- **PWA** — installable assets and offline app shell with local read/write access. Requires serving from HTTPS or localhost for installation and service worker.
 
-## Run locally
+## Quick start
 
-Node.js >= 22.5:
+Node.js 20+:
 
-```bash
-npm install
-APP_PASSWORD='a-long-unique-passphrase' \
-SESSION_SECRET="$(openssl rand -hex 32)" \
-OPENAI_API_KEY='your-openai-platform-api-key' \
+```sh
 npm run dev
 ```
 
-Open `http://localhost:4173` and enter the configured private passphrase. Without an API key, all non-AI functionality works, but coaching and AI recommendations display a clear configuration message.
+Open `http://localhost:4173`.
+
+Or build static files for any HTTPS static host (including Sites when available):
+
+```sh
+npm run build
+# Publish the contents of dist/
+```
+
+No environment variables or external APIs are required. The project is deliberately dependency-free.
 
 ## Tests
 
-```bash
+```sh
 npm run check
-python tests/browser_check.py
+python tests/browser_test.py
 ```
 
-The first command runs syntax checks and backend integration tests, including auth, persistent state, conflicts, experiments, reviews and health/assets. The Playwright script exercises the mobile UI with deterministic mock API responses; it does **not** claim a live AI service test. It uses the system Chromium binary.
+- `npm run check` validates JavaScript syntax, runs eight data-model tests, and verifies the static build.
+- `tests/browser_test.py` is an optional Playwright end-to-end test covering onboarding, reflection, reload, experiment switching, review, export/import, and offline launch. It needs a system Chromium browser, the Python `playwright` package, and permission to load localhost; some remote sandboxes block browser navigation entirely.
 
-## Vercel deployment
+## Privacy model
 
-The `/public` directory contains the PWA and `/api` contains Vercel Functions. Create a **private** Vercel Blob store connected to the project. Set these encrypted environment variables in Vercel:
+Your data never leaves the browser unless you manually export it or upload a backup elsewhere. It is **not encrypted at rest** by Human OS, and anybody with access to your device/browser profile might read it. The data is not synchronized between devices. Clearing site data, using private browsing, or switching hosting origins loses access to saved data unless you have an export. Keep periodic backups.
 
-- `APP_PASSWORD`: unique, strong, 12+ character private passphrase.
-- `SESSION_SECRET`: 32+ character cryptographically random secret. Changing this logs out active sessions.
-- `OPENAI_API_KEY`: your own OpenAI Platform API key.
-- `OPENAI_MODEL`: optional, defaults to `gpt-4.1-mini`.
+Previous server-hosted V3 data is **not** automatically transferred to this version. Export V3 data before switching and import its JSON backup in Settings after onboarding, when practical. A legacy export's AI conversation and model suggestions are intentionally omitted.
 
-The Vercel function automatically uses private Blob storage when `VERCEL` is set. Vercel Blob must be connected to the project with its scoped identity/token. **Never create a public Blob store for personal data.** Local dev defaults to SQLite via `DB_PATH`.
-
-After configuring production secrets and storage, deploy/redeploy and verify `/api/health` returns `configured: true` and `storage: private-blob`, then log in and complete onboarding. A successful health response is not proof that Blob writes or live AI are functional; test those explicitly.
-
-## Security and product limitations
-
-This is **single-user software**. All users of the same passphrase share a single data store. This is not multi-tenant auth. Vercel's serverless in-memory rate limiting is best-effort and not distributed; use Vercel's edge firewall or additional access controls for internet-facing production. There is no password recovery or MFA.
-
-The private Blob JSON store uses ETag-based optimistic concurrency. Concurrent edits that race are rejected with 409 rather than silently overwriting data. No automatic backups are provisioned; configure backups or periodic authenticated exports before relying on it for critical records.
-
-AI calls send selected context to OpenAI only on explicit user action, request `store:false`, and require an API key. The model can be wrong. It does not diagnose health conditions or autonomously modify experiments. The app never fabricates capability gains from self-reported check-ins.
-
-Offline mode is **read-only app shell**, not an offline write queue. Reminders, push notifications, cross-user collaboration, scheduled checks, voice features and automated data imports are intentionally not part of this minimal version. Browser storage does not contain server secrets.
-
-## Project layout
+## Development architecture
 
 ```text
-public/       Mobile UI, CSS, JS, image assets, PWA
-api/          Serverless endpoints
-lib/          Auth, data validation, persistence, AI, endpoint handler
-server.mjs    Local development server
-vercel.json   Deployment and security policy
-scripts/      (no build pipeline required)
-tests/        API integration + browser UI automation
+index.html, styles.css, app.js    Mobile interface
+assets/, icons/                   Visual assets
+manifest.webmanifest, sw.js       Installable and offline PWA
+storage.mjs                       Browser IndexedDB persistence
+data.mjs                          Domain data and validation
+scripts/serve.mjs                 No-dependency local development server
+scripts/build.mjs                 Copies app to dist/ for static deployment
+tests/                            Automated domain and browser tests
 ```
 
-## License and references
-
-Original Human OS implementation and generated illustrative mountain artwork. Oura is a reference for visual style, not an affiliation, API dependency, or copied UI asset.
+This is a single-device personal app, not a multi-user or cloud-synced service. AI recommendations, AI coaching, cloud login, API secrets and private server storage were intentionally removed in V4.
